@@ -67,7 +67,7 @@ export function ImportButton() {
       <input
         ref={inputRef}
         type="file"
-        accept={ACCEPTED_TYPES.join(',')}
+        accept="image/*"
         multiple
         className="hidden"
         onChange={e => e.target.files && handleFiles(e.target.files)}
