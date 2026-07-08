@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { db, type ImageRecord, type Character, type SourceWork } from '../db/database'
-import { deleteImageFromOPFS } from '../storage/opfs'
+import { deleteImageFromOPFS, getImageFile } from '../storage/opfs'
 import { TagEditor } from './TagEditor'
+import { ImageViewer } from './ImageViewer'
 
 interface Props {
   image: ImageRecord
@@ -9,13 +10,59 @@ interface Props {
   sourceWorks: SourceWork[]
 }
 
+const isTouchDevice = window.matchMedia('(pointer: coarse)').matches
+
 export function ImageCard({ image, characters, sourceWorks }: Props) {
   const [editing, setEditing] = useState(false)
+  const [viewing, setViewing] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const [copyFailed, setCopyFailed] = useState(false)
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const longPressDidFire = useRef(false)
 
   async function handleDelete() {
     if (!confirm('Delete this image?')) return
     await deleteImageFromOPFS(image.opfsPath)
     await db.images.delete(image.contentHash)
+  }
+
+  async function handleCopy(e: React.MouseEvent) {
+    e.stopPropagation()
+    try {
+      const file = await getImageFile(image.opfsPath)
+      await navigator.clipboard.write([new ClipboardItem({ [image.mimeType]: file })])
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      setCopyFailed(true)
+      setTimeout(() => setCopyFailed(false), 2500)
+    }
+  }
+
+  function handleTouchStart() {
+    longPressDidFire.current = false
+    longPressTimer.current = setTimeout(() => {
+      longPressDidFire.current = true
+      setEditing(true)
+    }, 500)
+  }
+
+  function handleTouchMove() {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current)
+      longPressTimer.current = null
+    }
+  }
+
+  function handleTouchEnd(e: React.TouchEvent) {
+    e.preventDefault() // suppress synthetic click
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current)
+      longPressTimer.current = null
+    }
+    if (!longPressDidFire.current) {
+      setViewing(true)
+    }
   }
 
   const imageChars = image.characterIds
@@ -30,7 +77,10 @@ export function ImageCard({ image, characters, sourceWorks }: Props) {
     <>
       <div className="group relative bg-slate-800 rounded-xl overflow-hidden flex flex-col">
         <button
-          onClick={() => setEditing(true)}
+          onClick={isTouchDevice ? undefined : () => setEditing(true)}
+          onTouchStart={isTouchDevice ? handleTouchStart : undefined}
+          onTouchMove={isTouchDevice ? handleTouchMove : undefined}
+          onTouchEnd={isTouchDevice ? handleTouchEnd : undefined}
           className="block w-full aspect-square overflow-hidden bg-slate-900"
         >
           <img
@@ -73,6 +123,21 @@ export function ImageCard({ image, characters, sourceWorks }: Props) {
           </div>
         </div>
 
+        {!isTouchDevice && (
+          <button
+            onClick={handleCopy}
+            className={`absolute top-2 right-9 w-6 h-6 rounded-full text-xs opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center ${copyFailed ? 'bg-amber-600 text-white opacity-100' : 'bg-black/60 hover:bg-slate-600 text-white'}`}
+            title={copied ? 'Copied!' : copyFailed ? 'Copy not supported in this browser' : 'Copy image'}
+          >
+            {copied ? '✓' : copyFailed ? '!' : (
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+              </svg>
+            )}
+          </button>
+        )}
+
         <button
           onClick={handleDelete}
           className="absolute top-2 right-2 w-6 h-6 bg-black/60 hover:bg-red-600 text-white rounded-full text-xs opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
@@ -82,6 +147,7 @@ export function ImageCard({ image, characters, sourceWorks }: Props) {
         </button>
       </div>
 
+      {viewing && <ImageViewer image={image} onClose={() => setViewing(false)} />}
       {editing && <TagEditor image={image} onClose={() => setEditing(false)} />}
     </>
   )

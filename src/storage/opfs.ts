@@ -20,10 +20,14 @@ export async function hashBuffer(buffer: ArrayBuffer): Promise<string> {
     .join('')
 }
 
-export async function getImageUrl(opfsPath: string): Promise<string> {
+export async function getImageFile(opfsPath: string): Promise<File> {
   const dir = await getImagesDir()
   const fileHandle = await dir.getFileHandle(opfsPath)
-  const file = await fileHandle.getFile()
+  return fileHandle.getFile()
+}
+
+export async function getImageUrl(opfsPath: string): Promise<string> {
+  const file = await getImageFile(opfsPath)
   return URL.createObjectURL(file)
 }
 
