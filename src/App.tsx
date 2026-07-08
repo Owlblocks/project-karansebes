@@ -55,7 +55,7 @@ export function App() {
   return (
     <div className="min-h-screen bg-slate-950 text-white flex flex-col">
       <header className="sticky top-0 z-40 bg-slate-900/90 backdrop-blur border-b border-slate-800 px-4 py-3 flex gap-3 items-center">
-        <h1 className="text-base font-semibold text-indigo-400 shrink-0">Reaction Tagger</h1>
+        <h1 className="text-base font-semibold text-indigo-400 shrink-0">Project Karansebes</h1>
         <SearchBar value={search} onChange={setSearch} />
         <button
           onClick={() => setLibraryOpen(true)}
