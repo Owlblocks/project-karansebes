@@ -4,12 +4,14 @@ import { db } from './db/database'
 import { ImageCard } from './components/ImageCard'
 import { ImportButton } from './components/ImportButton'
 import { SearchBar } from './components/SearchBar'
+import { LibraryModal } from './components/LibraryModal'
 
 type SortKey = 'createdAt' | 'filename'
 
 export function App() {
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState<SortKey>('createdAt')
+  const [libraryOpen, setLibraryOpen] = useState(false)
 
   const allImages = useLiveQuery(() => db.images.orderBy(sort).toArray(), [sort])
   const allCharacters = useLiveQuery(() => db.characters.toArray(), [])
@@ -65,8 +67,15 @@ export function App() {
           <option value="createdAt">Newest</option>
           <option value="filename">Name</option>
         </select>
+        <button
+          onClick={() => setLibraryOpen(true)}
+          className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white rounded-lg text-sm font-medium transition-colors shrink-0"
+        >
+          Library
+        </button>
         <ImportButton />
       </header>
+      {libraryOpen && <LibraryModal onClose={() => setLibraryOpen(false)} />}
 
       <main className="flex-1 p-4">
         {loading ? (
