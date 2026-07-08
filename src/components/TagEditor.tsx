@@ -10,8 +10,8 @@ interface Props {
 export function TagEditor({ image, onClose }: Props) {
   const [imageText, setImageText] = useState<string | null>(image.imageText)
   const [notes, setNotes] = useState(image.notes ?? '')
-  const [characterIds, setCharacterIds] = useState<number[]>(image.characterIds)
-  const [sourceWorkIds, setSourceWorkIds] = useState<number[]>(image.sourceWorkIds)
+  const [characterIds, setCharacterIds] = useState<string[]>(image.characterIds)
+  const [sourceWorkIds, setSourceWorkIds] = useState<string[]>(image.sourceWorkIds)
   const [situationTags, setSituationTags] = useState<string[]>(image.situationTags)
   const [charInput, setCharInput] = useState('')
   const [sourceInput, setSourceInput] = useState('')
@@ -36,7 +36,7 @@ export function TagEditor({ image, onClose }: Props) {
   const showCharCreate = charInput.trim().length > 0 &&
     !(allCharacters ?? []).some(c => c.name.toLowerCase() === charInput.trim().toLowerCase())
 
-  function addCharacter(id: number) {
+  function addCharacter(id: string) {
     setCharacterIds(prev => [...prev, id])
     setCharInput('')
   }
@@ -44,8 +44,9 @@ export function TagEditor({ image, onClose }: Props) {
   async function quickAddCharacter() {
     const name = charInput.trim()
     if (!name) return
-    const id = await db.characters.add({ name, sourceWorkIds: [] })
-    addCharacter(id as number)
+    const id = crypto.randomUUID()
+    await db.characters.add({ id, name, sourceWorkIds: [] })
+    addCharacter(id)
   }
 
   // Source works
@@ -56,7 +57,7 @@ export function TagEditor({ image, onClose }: Props) {
   const showSourceCreate = sourceInput.trim().length > 0 &&
     !(allSourceWorks ?? []).some(sw => sw.name.toLowerCase() === sourceInput.trim().toLowerCase())
 
-  function addSourceWork(id: number) {
+  function addSourceWork(id: string) {
     setSourceWorkIds(prev => [...prev, id])
     setSourceInput('')
   }
@@ -64,8 +65,9 @@ export function TagEditor({ image, onClose }: Props) {
   async function quickAddSourceWork() {
     const name = sourceInput.trim()
     if (!name) return
-    const id = await db.sourceWorks.add({ name })
-    addSourceWork(id as number)
+    const id = crypto.randomUUID()
+    await db.sourceWorks.add({ id, name })
+    addSourceWork(id)
   }
 
   // Situation tags
@@ -85,7 +87,7 @@ export function TagEditor({ image, onClose }: Props) {
   }
 
   async function save() {
-    await db.images.update(image.id!, {
+    await db.images.update(image.contentHash, {
       imageText,
       notes: notes.trim() || undefined,
       characterIds,

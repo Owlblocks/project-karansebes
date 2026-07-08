@@ -29,7 +29,7 @@ export function ImportButton() {
         const buffer = await file.arrayBuffer()
         const contentHash = await hashBuffer(buffer)
 
-        const existing = await db.images.where('contentHash').equals(contentHash).first()
+        const existing = await db.images.get(contentHash)
         if (existing) {
           skipped++
           continue

@@ -1,44 +1,43 @@
 import Dexie, { type Table } from 'dexie'
 
 export interface ImageRecord {
-  id?: number
+  contentHash: string
   filename: string
   opfsPath: string
   thumbnailDataUrl: string
   mimeType: string
   createdAt: Date
-  contentHash: string
   imageText: string | null  // null = unchecked, "" = confirmed no text, string = transcribed text
   notes?: string
-  characterIds: number[]
-  sourceWorkIds: number[]
+  characterIds: string[]
+  sourceWorkIds: string[]
   situationTags: string[]
 }
 
 export interface Character {
-  id?: number
+  id?: string
   name: string
-  sourceWorkIds: number[]
+  sourceWorkIds: string[]
 }
 
 export interface SourceWork {
-  id?: number
+  id?: string
   name: string
 }
 
-class ReactionTaggerDB extends Dexie {
+class KaransebesDB extends Dexie {
   images!: Table<ImageRecord>
   characters!: Table<Character>
   sourceWorks!: Table<SourceWork>
 
   constructor() {
-    super('ReactionTaggerDB')
-    this.version(2).stores({
-      images: '++id, createdAt, *characterIds, *sourceWorkIds, *situationTags, contentHash',
-      characters: '++id, name, *sourceWorkIds',
-      sourceWorks: '++id, name',
+    super('KaransebesDB')
+    this.version(1).stores({
+      images: 'contentHash, createdAt, *characterIds, *sourceWorkIds, *situationTags',
+      characters: 'id, name, *sourceWorkIds',
+      sourceWorks: 'id, name',
     })
   }
 }
 
-export const db = new ReactionTaggerDB()
+export const db = new KaransebesDB()

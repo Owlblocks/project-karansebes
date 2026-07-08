@@ -15,7 +15,7 @@ export function ImageCard({ image, characters, sourceWorks }: Props) {
   async function handleDelete() {
     if (!confirm(`Delete "${image.filename}"?`)) return
     await deleteImageFromOPFS(image.opfsPath)
-    await db.images.delete(image.id!)
+    await db.images.delete(image.contentHash)
   }
 
   const imageChars = image.characterIds

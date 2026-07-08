@@ -51,12 +51,12 @@ export function LibraryModal({ onClose }: Props) {
 function SourceWorksPanel() {
   const allSourceWorks = useLiveQuery(() => db.sourceWorks.orderBy('name').toArray(), [])
   const [newName, setNewName] = useState('')
-  const [editing, setEditing] = useState<{ id: number; name: string } | null>(null)
+  const [editing, setEditing] = useState<{ id: string; name: string } | null>(null)
 
   async function addSourceWork() {
     const name = newName.trim()
     if (!name) return
-    await db.sourceWorks.add({ name })
+    await db.sourceWorks.add({ id: crypto.randomUUID(), name })
     setNewName('')
   }
 
@@ -80,7 +80,7 @@ function SourceWorksPanel() {
       }
       const imgs = await db.images.where('sourceWorkIds').equals(sw.id!).toArray()
       for (const img of imgs) {
-        await db.images.update(img.id!, {
+        await db.images.update(img.contentHash, {
           sourceWorkIds: img.sourceWorkIds.filter(id => id !== sw.id),
         })
       }
@@ -155,9 +155,9 @@ function SourceWorksPanel() {
 // ── Characters ────────────────────────────────────────────────────────────────
 
 interface EditingChar {
-  id: number
+  id: string
   name: string
-  sourceWorkIds: number[]
+  sourceWorkIds: string[]
   sourceInput: string
 }
 
@@ -167,7 +167,7 @@ function CharactersPanel() {
   const [newName, setNewName] = useState('')
   const [editing, setEditing] = useState<EditingChar | null>(null)
 
-  function sourceWorkName(id: number) {
+  function sourceWorkName(id: string) {
     return allSourceWorks?.find(sw => sw.id === id)?.name ?? '?'
   }
 
@@ -180,7 +180,7 @@ function CharactersPanel() {
   async function addCharacter() {
     const name = newName.trim()
     if (!name) return
-    await db.characters.add({ name, sourceWorkIds: [] })
+    await db.characters.add({ id: crypto.randomUUID(), name, sourceWorkIds: [] })
     setNewName('')
   }
 
@@ -198,7 +198,7 @@ function CharactersPanel() {
       await db.characters.delete(char.id!)
       const imgs = await db.images.where('characterIds').equals(char.id!).toArray()
       for (const img of imgs) {
-        await db.images.update(img.id!, {
+        await db.images.update(img.contentHash, {
           characterIds: img.characterIds.filter(id => id !== char.id),
         })
       }
