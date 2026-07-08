@@ -6,14 +6,11 @@ import { ImportButton } from './components/ImportButton'
 import { SearchBar } from './components/SearchBar'
 import { LibraryModal } from './components/LibraryModal'
 
-type SortKey = 'createdAt' | 'filename'
-
 export function App() {
   const [search, setSearch] = useState('')
-  const [sort, setSort] = useState<SortKey>('createdAt')
   const [libraryOpen, setLibraryOpen] = useState(false)
 
-  const allImages = useLiveQuery(() => db.images.orderBy(sort).toArray(), [sort])
+  const allImages = useLiveQuery(() => db.images.orderBy('createdAt').toArray(), [])
   const allCharacters = useLiveQuery(() => db.characters.toArray(), [])
   const allSourceWorks = useLiveQuery(() => db.sourceWorks.toArray(), [])
 
@@ -21,13 +18,14 @@ export function App() {
     if (!allImages || !allCharacters || !allSourceWorks) return []
     const query = search.trim().toLowerCase()
 
-    const sorted = sort === 'createdAt' ? [...allImages].reverse() : allImages
+
+    const sorted = [...allImages].reverse()
     if (!query) return sorted
 
     return sorted.filter(img => {
       if (img.situationTags.some(t => t.includes(query))) return true
       if (img.imageText && img.imageText.toLowerCase().includes(query)) return true
-      if (img.filename.toLowerCase().includes(query)) return true
+      if (img.notes && img.notes.toLowerCase().includes(query)) return true
 
       const charNames = img.characterIds
         .map(id => allCharacters.find(c => c.id === id)?.name.toLowerCase())
@@ -50,7 +48,7 @@ export function App() {
 
       return false
     })
-  }, [allImages, allCharacters, allSourceWorks, search, sort])
+  }, [allImages, allCharacters, allSourceWorks, search])
 
   const loading = allImages === undefined || allCharacters === undefined || allSourceWorks === undefined
 
@@ -59,14 +57,6 @@ export function App() {
       <header className="sticky top-0 z-40 bg-slate-900/90 backdrop-blur border-b border-slate-800 px-4 py-3 flex gap-3 items-center">
         <h1 className="text-base font-semibold text-indigo-400 shrink-0">Reaction Tagger</h1>
         <SearchBar value={search} onChange={setSearch} />
-        <select
-          value={sort}
-          onChange={e => setSort(e.target.value as SortKey)}
-          className="bg-slate-800 text-slate-300 rounded-lg px-2 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
-        >
-          <option value="createdAt">Newest</option>
-          <option value="filename">Name</option>
-        </select>
         <button
           onClick={() => setLibraryOpen(true)}
           className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white rounded-lg text-sm font-medium transition-colors shrink-0"

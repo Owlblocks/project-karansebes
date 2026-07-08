@@ -13,7 +13,7 @@ export function ImageCard({ image, characters, sourceWorks }: Props) {
   const [editing, setEditing] = useState(false)
 
   async function handleDelete() {
-    if (!confirm(`Delete "${image.filename}"?`)) return
+    if (!confirm('Delete this image?')) return
     await deleteImageFromOPFS(image.opfsPath)
     await db.images.delete(image.contentHash)
   }
@@ -35,7 +35,7 @@ export function ImageCard({ image, characters, sourceWorks }: Props) {
         >
           <img
             src={image.thumbnailDataUrl}
-            alt={image.filename}
+            alt=""
             className="w-full h-full object-contain transition-transform group-hover:scale-105"
           />
         </button>
@@ -50,7 +50,7 @@ export function ImageCard({ image, characters, sourceWorks }: Props) {
         )}
 
         <div className="p-2 flex flex-col gap-1">
-          <p className="text-xs text-slate-500 truncate">{image.filename}</p>
+          {image.notes && <p className="text-xs text-slate-500 truncate">{image.notes}</p>}
           <div className="flex flex-wrap gap-1">
             {imageChars.map(char => (
               <span key={char.id} className="text-xs bg-violet-900 text-violet-200 px-1.5 py-0.5 rounded-full">

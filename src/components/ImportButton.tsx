@@ -42,7 +42,6 @@ export function ImportButton() {
         ])
 
         await db.images.add({
-          filename: file.name,
           opfsPath,
           thumbnailDataUrl,
           mimeType: file.type,

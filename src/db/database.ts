@@ -2,7 +2,6 @@ import Dexie, { type Table } from 'dexie'
 
 export interface ImageRecord {
   contentHash: string
-  filename: string
   opfsPath: string
   thumbnailDataUrl: string
   mimeType: string
@@ -37,6 +36,9 @@ class KaransebesDB extends Dexie {
       characters: 'id, name, *sourceWorkIds',
       sourceWorks: 'id, name',
     })
+    this.version(2).stores({}).upgrade(tx =>
+      tx.table('images').toCollection().modify(img => { delete img.filename })
+    )
   }
 }
 

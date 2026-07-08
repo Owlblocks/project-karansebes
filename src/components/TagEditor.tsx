@@ -106,7 +106,7 @@ export function TagEditor({ image, onClose }: Props) {
       <div className="bg-slate-800 rounded-xl p-6 w-full max-w-lg flex flex-col gap-5 max-h-[90vh] overflow-y-auto">
         <img
           src={image.thumbnailDataUrl}
-          alt={image.filename}
+          alt=""
           className="w-full max-h-40 object-contain rounded-lg bg-slate-900 shrink-0"
         />
 
