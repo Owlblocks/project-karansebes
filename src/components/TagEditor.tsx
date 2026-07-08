@@ -1,6 +1,7 @@
 import { useState, type KeyboardEvent } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, type ImageRecord, type Character } from '../db/database'
+import { SearchableEntityPicker, TagChip } from './SearchableEntityPicker'
 
 interface Props {
   image: ImageRecord
@@ -147,110 +148,50 @@ export function TagEditor({ image, onClose }: Props) {
         </section>
 
         {/* Characters */}
-        <section className="flex flex-col gap-2">
-          <span className="text-sm font-medium text-slate-300">Characters</span>
-          <div className="flex flex-wrap gap-1.5">
-            {characterIds.map(id => {
-              const char = allCharacters?.find(c => c.id === id)
-              if (!char) return null
-              return (
-                <span key={id} className="flex items-center gap-1 px-2 py-1 bg-violet-700 text-white text-xs rounded-full">
-                  {characterLabel(char)}
-                  <button onClick={() => setCharacterIds(prev => prev.filter(c => c !== id))} className="hover:text-red-300">×</button>
-                </span>
-              )
-            })}
-          </div>
-          <div className="relative">
-            <input
-              type="text"
-              value={charInput}
-              onChange={e => setCharInput(e.target.value)}
-              placeholder="Search or add character…"
-              className="w-full bg-slate-700 text-white rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500 placeholder:text-slate-500"
-            />
-            {charInput.trim().length > 0 && (filteredChars.length > 0 || showCharCreate) && (
-              <div className="absolute top-full mt-1 w-full bg-slate-700 rounded-lg shadow-lg z-10 overflow-hidden border border-slate-600">
-                {filteredChars.map(char => (
-                  <button
-                    key={char.id}
-                    onMouseDown={e => { e.preventDefault(); addCharacter(char.id!) }}
-                    className="w-full text-left px-3 py-2 text-sm text-white hover:bg-slate-600"
-                  >
-                    {characterLabel(char)}
-                  </button>
-                ))}
-                {showCharCreate && (
-                  <button
-                    onMouseDown={e => { e.preventDefault(); quickAddCharacter() }}
-                    className="w-full text-left px-3 py-2 text-sm text-indigo-300 hover:bg-slate-600"
-                  >
-                    + Create "{charInput.trim()}"
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-        </section>
+        <SearchableEntityPicker
+          label="Characters"
+          selectedItems={characterIds.flatMap(id => {
+            const char = allCharacters?.find(c => c.id === id)
+            return char ? [{ id, label: characterLabel(char) }] : []
+          })}
+          onRemove={id => setCharacterIds(prev => prev.filter(c => c !== id))}
+          searchResults={filteredChars.map(c => ({ id: c.id!, label: characterLabel(c) }))}
+          inputValue={charInput}
+          onInputChange={setCharInput}
+          onSelect={addCharacter}
+          showCreate={showCharCreate}
+          createLabel={charInput.trim()}
+          onCreate={quickAddCharacter}
+          chipColor="bg-violet-700"
+          placeholder="Search or add character…"
+        />
 
         {/* Source works */}
-        <section className="flex flex-col gap-2">
-          <span className="text-sm font-medium text-slate-300">
-            Source works <span className="text-slate-500 font-normal">(direct, no specific character)</span>
-          </span>
-          <div className="flex flex-wrap gap-1.5">
-            {sourceWorkIds.map(id => {
-              const sw = allSourceWorks?.find(s => s.id === id)
-              if (!sw) return null
-              return (
-                <span key={id} className="flex items-center gap-1 px-2 py-1 bg-teal-700 text-white text-xs rounded-full">
-                  {sw.name}
-                  <button onClick={() => setSourceWorkIds(prev => prev.filter(s => s !== id))} className="hover:text-red-300">×</button>
-                </span>
-              )
-            })}
-          </div>
-          <div className="relative">
-            <input
-              type="text"
-              value={sourceInput}
-              onChange={e => setSourceInput(e.target.value)}
-              placeholder="Search or add source work…"
-              className="w-full bg-slate-700 text-white rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500 placeholder:text-slate-500"
-            />
-            {sourceInput.trim().length > 0 && (filteredSources.length > 0 || showSourceCreate) && (
-              <div className="absolute top-full mt-1 w-full bg-slate-700 rounded-lg shadow-lg z-10 overflow-hidden border border-slate-600">
-                {filteredSources.map(sw => (
-                  <button
-                    key={sw.id}
-                    onMouseDown={e => { e.preventDefault(); addSourceWork(sw.id!) }}
-                    className="w-full text-left px-3 py-2 text-sm text-white hover:bg-slate-600"
-                  >
-                    {sw.name}
-                  </button>
-                ))}
-                {showSourceCreate && (
-                  <button
-                    onMouseDown={e => { e.preventDefault(); quickAddSourceWork() }}
-                    className="w-full text-left px-3 py-2 text-sm text-indigo-300 hover:bg-slate-600"
-                  >
-                    + Create "{sourceInput.trim()}"
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-        </section>
+        <SearchableEntityPicker
+          label="Source works"
+          labelHint="direct, no specific character"
+          selectedItems={sourceWorkIds.flatMap(id => {
+            const sw = allSourceWorks?.find(s => s.id === id)
+            return sw ? [{ id, label: sw.name }] : []
+          })}
+          onRemove={id => setSourceWorkIds(prev => prev.filter(s => s !== id))}
+          searchResults={filteredSources.map(sw => ({ id: sw.id!, label: sw.name }))}
+          inputValue={sourceInput}
+          onInputChange={setSourceInput}
+          onSelect={addSourceWork}
+          showCreate={showSourceCreate}
+          createLabel={sourceInput.trim()}
+          onCreate={quickAddSourceWork}
+          chipColor="bg-teal-700"
+          placeholder="Search or add source work…"
+        />
 
         {/* Situation tags */}
         <section className="flex flex-col gap-2">
           <span className="text-sm font-medium text-slate-300">Situation tags</span>
           <div className="flex flex-wrap gap-1.5">
             {situationTags.map(tag => (
-              <span key={tag} className="flex items-center gap-1 px-2 py-1 bg-indigo-700 text-white text-xs rounded-full">
-                {tag}
-                <button onClick={() => setSituationTags(prev => prev.filter(t => t !== tag))} className="hover:text-red-300">×</button>
-              </span>
+              <TagChip key={tag} label={tag} onRemove={() => setSituationTags(prev => prev.filter(t => t !== tag))} chipColor="bg-indigo-700" />
             ))}
           </div>
           <input
