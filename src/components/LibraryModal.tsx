@@ -1,12 +1,59 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, type Character, type SourceWork } from '../db/database'
+import { TagChip } from './SearchableEntityPicker'
 
 type Tab = 'characters' | 'sourceWorks'
 
 interface Props {
   onClose: () => void
 }
+
+// ── Shared local components ───────────────────────────────────────────────────
+
+function AddItemInput({ value, onChange, onAdd, placeholder }: {
+  value: string
+  onChange: (v: string) => void
+  onAdd: () => void
+  placeholder: string
+}) {
+  return (
+    <div className="flex gap-2">
+      <input
+        type="text"
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        onKeyDown={e => e.key === 'Enter' && onAdd()}
+        placeholder={placeholder}
+        className="flex-1 bg-slate-600 text-white rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500 placeholder:text-slate-400"
+      />
+      <button
+        onClick={onAdd}
+        className="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium"
+      >
+        Add
+      </button>
+    </div>
+  )
+}
+
+function EntityRow({ label, onEdit, onDelete }: {
+  label: string
+  onEdit: () => void
+  onDelete: () => void
+}) {
+  return (
+    <div className="flex items-center justify-between">
+      <span className="text-sm text-white">{label}</span>
+      <div className="flex gap-2">
+        <button onClick={onEdit} className="text-xs text-slate-400 hover:text-white">Edit</button>
+        <button onClick={onDelete} className="text-xs text-slate-400 hover:text-red-400">Delete</button>
+      </div>
+    </div>
+  )
+}
+
+// ── LibraryModal ──────────────────────────────────────────────────────────────
 
 export function LibraryModal({ onClose }: Props) {
   const [tab, setTab] = useState<Tab>('characters')
@@ -89,22 +136,7 @@ function SourceWorksPanel() {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex gap-2">
-        <input
-          type="text"
-          value={newName}
-          onChange={e => setNewName(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && addSourceWork()}
-          placeholder="New source work…"
-          className="flex-1 bg-slate-600 text-white rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500 placeholder:text-slate-400"
-        />
-        <button
-          onClick={addSourceWork}
-          className="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium"
-        >
-          Add
-        </button>
-      </div>
+      <AddItemInput value={newName} onChange={setNewName} onAdd={addSourceWork} placeholder="New source work…" />
 
       {(allSourceWorks ?? []).length === 0 && (
         <p className="text-sm text-slate-500 italic">No source works yet.</p>
@@ -127,23 +159,11 @@ function SourceWorksPanel() {
                 <button onClick={() => setEditing(null)} className="text-sm text-slate-400 hover:text-white">Cancel</button>
               </div>
             ) : (
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-white">{sw.name}</span>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setEditing({ id: sw.id!, name: sw.name })}
-                    className="text-xs text-slate-400 hover:text-white"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => deleteSourceWork(sw)}
-                    className="text-xs text-slate-400 hover:text-red-400"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
+              <EntityRow
+                label={sw.name}
+                onEdit={() => setEditing({ id: sw.id!, name: sw.name })}
+                onDelete={() => deleteSourceWork(sw)}
+              />
             )}
           </li>
         ))}
@@ -205,7 +225,6 @@ function CharactersPanel() {
     })
   }
 
-  // Source work autocomplete for character editor
   const availableSources = (allSourceWorks ?? []).filter(sw =>
     !editing?.sourceWorkIds.includes(sw.id!) &&
     sw.name.toLowerCase().includes((editing?.sourceInput ?? '').toLowerCase())
@@ -214,22 +233,7 @@ function CharactersPanel() {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex gap-2">
-        <input
-          type="text"
-          value={newName}
-          onChange={e => setNewName(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && addCharacter()}
-          placeholder="New character…"
-          className="flex-1 bg-slate-600 text-white rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500 placeholder:text-slate-400"
-        />
-        <button
-          onClick={addCharacter}
-          className="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium"
-        >
-          Add
-        </button>
-      </div>
+      <AddItemInput value={newName} onChange={setNewName} onAdd={addCharacter} placeholder="New character…" />
 
       {(allCharacters ?? []).length === 0 && (
         <p className="text-sm text-slate-500 italic">No characters yet.</p>
@@ -250,15 +254,12 @@ function CharactersPanel() {
                 />
                 <div className="flex flex-wrap gap-1">
                   {editing!.sourceWorkIds.map(id => (
-                    <span key={id} className="flex items-center gap-1 px-2 py-0.5 bg-teal-700 text-white text-xs rounded-full">
-                      {sourceWorkName(id)}
-                      <button
-                        onClick={() => setEditing(ed => ed ? { ...ed, sourceWorkIds: ed.sourceWorkIds.filter(s => s !== id) } : null)}
-                        className="hover:text-red-300"
-                      >
-                        ×
-                      </button>
-                    </span>
+                    <TagChip
+                      key={id}
+                      label={sourceWorkName(id)}
+                      onRemove={() => setEditing(ed => ed ? { ...ed, sourceWorkIds: ed.sourceWorkIds.filter(s => s !== id) } : null)}
+                      chipColor="bg-teal-700"
+                    />
                   ))}
                 </div>
                 <div className="relative">
@@ -292,23 +293,11 @@ function CharactersPanel() {
                 </div>
               </div>
             ) : (
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-white">{characterLabel(char)}</span>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setEditing({ id: char.id!, name: char.name, sourceWorkIds: char.sourceWorkIds, sourceInput: '' })}
-                    className="text-xs text-slate-400 hover:text-white"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => deleteCharacter(char)}
-                    className="text-xs text-slate-400 hover:text-red-400"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
+              <EntityRow
+                label={characterLabel(char)}
+                onEdit={() => setEditing({ id: char.id!, name: char.name, sourceWorkIds: char.sourceWorkIds, sourceInput: '' })}
+                onDelete={() => deleteCharacter(char)}
+              />
             )}
           </li>
         ))}
