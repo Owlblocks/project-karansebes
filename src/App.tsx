@@ -11,20 +11,46 @@ export function App() {
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState<SortKey>('createdAt')
 
-  const allImages = useLiveQuery(
-    () => db.images.orderBy(sort).toArray(),
-    [sort]
-  )
+  const allImages = useLiveQuery(() => db.images.orderBy(sort).toArray(), [sort])
+  const allCharacters = useLiveQuery(() => db.characters.toArray(), [])
+  const allSourceWorks = useLiveQuery(() => db.sourceWorks.toArray(), [])
 
   const filtered = useMemo(() => {
-    if (!allImages) return []
+    if (!allImages || !allCharacters || !allSourceWorks) return []
     const query = search.trim().toLowerCase()
-    if (!query) return sort === 'createdAt' ? [...allImages].reverse() : allImages
-    return allImages.filter(img =>
-      img.tags.some(tag => tag.includes(query)) ||
-      img.filename.toLowerCase().includes(query)
-    )
-  }, [allImages, search, sort])
+
+    const sorted = sort === 'createdAt' ? [...allImages].reverse() : allImages
+    if (!query) return sorted
+
+    return sorted.filter(img => {
+      if (img.situationTags.some(t => t.includes(query))) return true
+      if (img.imageText && img.imageText.toLowerCase().includes(query)) return true
+      if (img.filename.toLowerCase().includes(query)) return true
+
+      const charNames = img.characterIds
+        .map(id => allCharacters.find(c => c.id === id)?.name.toLowerCase())
+        .filter(Boolean) as string[]
+      if (charNames.some(n => n.includes(query))) return true
+
+      const sourceNames = img.sourceWorkIds
+        .map(id => allSourceWorks.find(sw => sw.id === id)?.name.toLowerCase())
+        .filter(Boolean) as string[]
+      if (sourceNames.some(n => n.includes(query))) return true
+
+      // also match source works reachable via characters
+      const charSourceNames = img.characterIds.flatMap(cid => {
+        const char = allCharacters.find(c => c.id === cid)
+        return (char?.sourceWorkIds ?? [])
+          .map(sid => allSourceWorks.find(sw => sw.id === sid)?.name.toLowerCase())
+          .filter(Boolean) as string[]
+      })
+      if (charSourceNames.some(n => n.includes(query))) return true
+
+      return false
+    })
+  }, [allImages, allCharacters, allSourceWorks, search, sort])
+
+  const loading = allImages === undefined || allCharacters === undefined || allSourceWorks === undefined
 
   return (
     <div className="min-h-screen bg-slate-950 text-white flex flex-col">
@@ -43,7 +69,7 @@ export function App() {
       </header>
 
       <main className="flex-1 p-4">
-        {allImages === undefined ? (
+        {loading ? (
           <p className="text-slate-500 text-sm">Loading…</p>
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 gap-3 text-slate-500">
@@ -55,7 +81,12 @@ export function App() {
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
             {filtered.map(img => (
-              <ImageCard key={img.id} image={img} />
+              <ImageCard
+                key={img.id}
+                image={img}
+                characters={allCharacters}
+                sourceWorks={allSourceWorks}
+              />
             ))}
           </div>
         )}

@@ -1,13 +1,15 @@
 import { useState } from 'react'
-import { db, type ImageRecord } from '../db/database'
+import { db, type ImageRecord, type Character, type SourceWork } from '../db/database'
 import { deleteImageFromOPFS } from '../storage/opfs'
 import { TagEditor } from './TagEditor'
 
 interface Props {
   image: ImageRecord
+  characters: Character[]
+  sourceWorks: SourceWork[]
 }
 
-export function ImageCard({ image }: Props) {
+export function ImageCard({ image, characters, sourceWorks }: Props) {
   const [editing, setEditing] = useState(false)
 
   async function handleDelete() {
@@ -15,6 +17,14 @@ export function ImageCard({ image }: Props) {
     await deleteImageFromOPFS(image.opfsPath)
     await db.images.delete(image.id!)
   }
+
+  const imageChars = image.characterIds
+    .map(id => characters.find(c => c.id === id))
+    .filter(Boolean) as Character[]
+
+  const directSourceWorks = image.characterIds.length === 0
+    ? image.sourceWorkIds.map(id => sourceWorks.find(sw => sw.id === id)).filter(Boolean) as SourceWork[]
+    : []
 
   return (
     <>
@@ -30,17 +40,35 @@ export function ImageCard({ image }: Props) {
           />
         </button>
 
+        {image.imageText === null && (
+          <span
+            className="absolute top-2 left-2 bg-amber-500/80 text-white text-[10px] font-medium px-1.5 py-0.5 rounded"
+            title="Image text not yet checked"
+          >
+            unchecked
+          </span>
+        )}
+
         <div className="p-2 flex flex-col gap-1">
-          <p className="text-xs text-slate-400 truncate">{image.filename}</p>
+          <p className="text-xs text-slate-500 truncate">{image.filename}</p>
           <div className="flex flex-wrap gap-1">
-            {image.tags.length === 0 ? (
+            {imageChars.map(char => (
+              <span key={char.id} className="text-xs bg-violet-900 text-violet-200 px-1.5 py-0.5 rounded-full">
+                {char.name}
+              </span>
+            ))}
+            {directSourceWorks.map(sw => (
+              <span key={sw.id} className="text-xs bg-teal-900 text-teal-200 px-1.5 py-0.5 rounded-full">
+                {sw.name}
+              </span>
+            ))}
+            {image.situationTags.map(tag => (
+              <span key={tag} className="text-xs bg-indigo-900 text-indigo-200 px-1.5 py-0.5 rounded-full">
+                {tag}
+              </span>
+            ))}
+            {imageChars.length === 0 && directSourceWorks.length === 0 && image.situationTags.length === 0 && (
               <span className="text-xs text-slate-600 italic">no tags</span>
-            ) : (
-              image.tags.map(tag => (
-                <span key={tag} className="text-xs bg-indigo-900 text-indigo-200 px-1.5 py-0.5 rounded-full">
-                  {tag}
-                </span>
-              ))
             )}
           </div>
         </div>
