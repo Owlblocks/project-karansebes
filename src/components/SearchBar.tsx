@@ -10,7 +10,7 @@ export function SearchBar({ value, onChange }: Props) {
       value={value}
       onChange={e => onChange(e.target.value)}
       placeholder="Search by tag…"
-      className="flex-1 bg-slate-800 text-white rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500 placeholder:text-slate-500"
+      className="flex-1 min-w-0 bg-slate-800 text-white rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500 placeholder:text-slate-500"
     />
   )
 }

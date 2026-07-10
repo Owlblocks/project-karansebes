@@ -55,7 +55,7 @@ export function App() {
   return (
     <div className="min-h-screen bg-slate-950 text-white flex flex-col">
       <header className="sticky top-0 z-40 bg-slate-900/90 backdrop-blur border-b border-slate-800 px-4 py-3 flex gap-3 items-center">
-        <h1 className="text-base font-semibold text-indigo-400 shrink-0">Project Karansebes</h1>
+        <h1 className="text-base font-semibold text-indigo-400 shrink-0 hidden sm:block">Project Karansebes</h1>
         <SearchBar value={search} onChange={setSearch} />
         <button
           onClick={() => setLibraryOpen(true)}
@@ -67,7 +67,7 @@ export function App() {
       </header>
       {libraryOpen && <LibraryModal onClose={() => setLibraryOpen(false)} />}
 
-      <main className="flex-1 p-4">
+      <main className="flex-1 min-w-0 p-4">
         {loading ? (
           <p className="text-slate-500 text-sm">Loading…</p>
         ) : filtered.length === 0 ? (
@@ -78,7 +78,7 @@ export function App() {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 min-[480px]:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
             {filtered.map(img => (
               <ImageCard
                 key={img.contentHash}
