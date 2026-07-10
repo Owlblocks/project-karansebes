@@ -19,6 +19,7 @@ export function ImageCard({ image, characters, sourceWorks }: Props) {
   const [copyFailed, setCopyFailed] = useState(false)
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const longPressDidFire = useRef(false)
+  const didMove = useRef(false)
 
   async function handleDelete() {
     if (!confirm('Delete this image?')) return
@@ -41,6 +42,7 @@ export function ImageCard({ image, characters, sourceWorks }: Props) {
 
   function handleTouchStart() {
     longPressDidFire.current = false
+    didMove.current = false
     longPressTimer.current = setTimeout(() => {
       longPressDidFire.current = true
       setEditing(true)
@@ -48,6 +50,7 @@ export function ImageCard({ image, characters, sourceWorks }: Props) {
   }
 
   function handleTouchMove() {
+    didMove.current = true
     if (longPressTimer.current) {
       clearTimeout(longPressTimer.current)
       longPressTimer.current = null
@@ -55,14 +58,13 @@ export function ImageCard({ image, characters, sourceWorks }: Props) {
   }
 
   function handleTouchEnd(e: React.TouchEvent) {
-    e.preventDefault() // suppress synthetic click
     if (longPressTimer.current) {
       clearTimeout(longPressTimer.current)
       longPressTimer.current = null
     }
-    if (!longPressDidFire.current) {
-      setViewing(true)
-    }
+    if (didMove.current || longPressDidFire.current) return
+    e.preventDefault()
+    setViewing(true)
   }
 
   const imageChars = image.characterIds
