@@ -75,9 +75,14 @@ export function ImportButton() {
       <button
         onClick={() => inputRef.current?.click()}
         disabled={importing}
-        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors"
+        className="px-2 sm:px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors shrink-0"
       >
-        {importing ? (progress ?? 'Importing…') : 'Import Images'}
+        {importing ? (progress ?? 'Importing…') : (
+          <>
+            <span className="sm:hidden">📥</span>
+            <span className="hidden sm:inline">Import Images</span>
+          </>
+        )}
       </button>
     </>
   )

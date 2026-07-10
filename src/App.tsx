@@ -9,6 +9,7 @@ import { LibraryModal } from './components/LibraryModal'
 export function App() {
   const [search, setSearch] = useState('')
   const [libraryOpen, setLibraryOpen] = useState(false)
+  const [uncheckedOnly, setUncheckedOnly] = useState(false)
 
   const allImages = useLiveQuery(() => db.images.orderBy('createdAt').toArray(), [])
   const allCharacters = useLiveQuery(() => db.characters.toArray(), [])
@@ -20,9 +21,10 @@ export function App() {
 
 
     const sorted = [...allImages].reverse()
-    if (!query) return sorted
+    const base = uncheckedOnly ? sorted.filter(img => img.imageText === null) : sorted
+    if (!query) return base
 
-    return sorted.filter(img => {
+    return base.filter(img => {
       if (img.situationTags.some(t => t.includes(query))) return true
       if (img.imageText && img.imageText.toLowerCase().includes(query)) return true
       if (img.notes && img.notes.toLowerCase().includes(query)) return true
@@ -48,7 +50,7 @@ export function App() {
 
       return false
     })
-  }, [allImages, allCharacters, allSourceWorks, search])
+  }, [allImages, allCharacters, allSourceWorks, search, uncheckedOnly])
 
   const loading = allImages === undefined || allCharacters === undefined || allSourceWorks === undefined
 
@@ -58,10 +60,18 @@ export function App() {
         <h1 className="text-base font-semibold text-indigo-400 shrink-0 hidden sm:block">Project Karansebes</h1>
         <SearchBar value={search} onChange={setSearch} />
         <button
-          onClick={() => setLibraryOpen(true)}
-          className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white rounded-lg text-sm font-medium transition-colors shrink-0"
+          onClick={() => setUncheckedOnly(v => !v)}
+          className={`px-2 sm:px-4 py-2 rounded-lg text-sm font-medium transition-colors shrink-0 ${uncheckedOnly ? 'bg-amber-500 text-white hover:bg-amber-400' : 'bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white'}`}
         >
-          Library
+          <span className="sm:hidden">✓</span>
+          <span className="hidden sm:inline">Unchecked</span>
+        </button>
+        <button
+          onClick={() => setLibraryOpen(true)}
+          className="px-2 sm:px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white rounded-lg text-sm font-medium transition-colors shrink-0"
+        >
+          <span className="sm:hidden">📚</span>
+          <span className="hidden sm:inline">Library</span>
         </button>
         <ImportButton />
       </header>
