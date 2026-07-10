@@ -186,6 +186,7 @@ function CharactersPanel() {
   const allSourceWorks = useLiveQuery(() => db.sourceWorks.orderBy('name').toArray(), [])
   const [newName, setNewName] = useState('')
   const [editing, setEditing] = useState<EditingChar | null>(null)
+  const [noSourceOnly, setNoSourceOnly] = useState(false)
 
   function sourceWorkName(id: string) {
     return allSourceWorks?.find(sw => sw.id === id)?.name ?? '?'
@@ -231,16 +232,30 @@ function CharactersPanel() {
   )
   const showSourceDropdown = (editing?.sourceInput.trim().length ?? 0) > 0 && availableSources.length > 0
 
+  const visibleCharacters = noSourceOnly
+    ? (allCharacters ?? []).filter(c => c.sourceWorkIds.length === 0)
+    : (allCharacters ?? [])
+
   return (
     <div className="flex flex-col gap-3">
       <AddItemInput value={newName} onChange={setNewName} onAdd={addCharacter} placeholder="New character…" />
 
-      {(allCharacters ?? []).length === 0 && (
-        <p className="text-sm text-slate-500 italic">No characters yet.</p>
+      <button
+        onClick={() => setNoSourceOnly(v => !v)}
+        className={`self-start px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${noSourceOnly ? 'bg-amber-500 text-white hover:bg-amber-400' : 'bg-slate-500 text-slate-300 hover:text-white'}`}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3 inline-block mr-1"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+        No source work
+      </button>
+
+      {visibleCharacters.length === 0 && (
+        <p className="text-sm text-slate-500 italic">
+          {noSourceOnly ? 'All characters have a source work.' : 'No characters yet.'}
+        </p>
       )}
 
       <ul className="flex flex-col gap-1">
-        {(allCharacters ?? []).map(char => (
+        {visibleCharacters.map(char => (
           <li key={char.id} className="bg-slate-600 rounded-lg px-3 py-2">
             {editing?.id === char.id ? (
               <div className="flex flex-col gap-2">

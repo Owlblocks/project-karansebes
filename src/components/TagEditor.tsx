@@ -82,8 +82,6 @@ export function TagEditor({ image, onClose }: Props) {
     if (e.key === 'Enter' || e.key === ',') {
       e.preventDefault()
       addSituationTag()
-    } else if (e.key === 'Backspace' && sitInput === '' && situationTags.length > 0) {
-      setSituationTags(prev => prev.slice(0, -1))
     }
   }
 
