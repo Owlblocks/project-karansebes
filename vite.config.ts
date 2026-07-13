@@ -11,8 +11,8 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
-        name: 'Reaction Tagger',
-        short_name: 'ReactionTagger',
+        name: 'Project Karansebes',
+        short_name: 'Karansebes',
         description: 'Tag, search, and sort reaction images',
         theme_color: '#0f172a',
         background_color: '#0f172a',
