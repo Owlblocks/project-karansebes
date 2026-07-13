@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from './db/database'
 import { ImageCard } from './components/ImageCard'
@@ -6,11 +6,32 @@ import { ImportButton } from './components/ImportButton'
 import { ExportButton } from './components/ExportButton'
 import { SearchBar } from './components/SearchBar'
 import { LibraryModal } from './components/LibraryModal'
+import { useFileImport } from './hooks/useFileImport'
+
+function hasDragFiles(dt: DataTransfer): boolean {
+  if (dt.items) return Array.from(dt.items).some(i => i.kind === 'file')
+  return Array.from(dt.types).some(t => t.toLowerCase() === 'files')
+}
 
 export function App() {
   const [search, setSearch] = useState('')
   const [libraryOpen, setLibraryOpen] = useState(false)
   const [uncheckedOnly, setUncheckedOnly] = useState(false)
+  const [dragging, setDragging] = useState(false)
+
+  const { importing: dragImporting, progress: dragProgress, handleFiles } = useFileImport()
+
+  // Capture-phase listener on window fires before React's delegation system,
+  // which is what the browser checks when deciding to show the "not allowed" cursor.
+  useEffect(() => {
+    const stop = (e: Event) => e.preventDefault()
+    window.addEventListener('dragover', stop, true)
+    window.addEventListener('drop', stop, true)
+    return () => {
+      window.removeEventListener('dragover', stop, true)
+      window.removeEventListener('drop', stop, true)
+    }
+  }, [])
 
   const allImages = useLiveQuery(() => db.images.orderBy('createdAt').toArray(), [])
   const allCharacters = useLiveQuery(() => db.characters.toArray(), [])
@@ -56,7 +77,57 @@ export function App() {
   const loading = allImages === undefined || allCharacters === undefined || allSourceWorks === undefined
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white flex flex-col">
+    <div
+      className="min-h-screen bg-slate-950 text-white flex flex-col"
+      onDragStart={e => e.preventDefault()}
+      onDragEnter={e => {
+        e.preventDefault()
+        if (hasDragFiles(e.dataTransfer)) setDragging(true)
+      }}
+      onDragOver={e => {
+        e.preventDefault()
+        e.dataTransfer.dropEffect = 'copy'
+      }}
+      onDragLeave={e => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragging(false)
+      }}
+      onDrop={e => {
+        e.preventDefault()
+        setDragging(false)
+        const dt = e.dataTransfer
+        const files: File[] = dt.files.length > 0
+          ? Array.from(dt.files)
+          : Array.from(dt.items)
+              .filter(i => i.kind === 'file')
+              .map(i => i.getAsFile())
+              .filter((f): f is File => f !== null)
+        if (files.length > 0) handleFiles(files)
+      }}
+    >
+      {(dragging || dragImporting) && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm pointer-events-none">
+          <div className="border-2 border-dashed border-indigo-400 rounded-2xl px-16 py-12 flex flex-col items-center gap-4 text-indigo-300">
+            {dragImporting ? (
+              <>
+                <svg className="w-16 h-16 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a10 10 0 100 10h-2a8 8 0 01-8-8z" />
+                </svg>
+                <p className="text-xl font-semibold">{dragProgress ?? 'Importing…'}</p>
+              </>
+            ) : (
+              <>
+                <svg className="w-16 h-16" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                </svg>
+                <p className="text-2xl font-semibold">Drop to import</p>
+                <p className="text-sm text-slate-400">Images or ZIP archives</p>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       <header className="sticky top-0 z-40 bg-slate-900/90 backdrop-blur border-b border-slate-800 px-4 py-3 flex gap-3 items-center">
         <h1 className="text-base font-semibold text-indigo-400 shrink-0 hidden sm:block">Project Karansebes</h1>
         <SearchBar value={search} onChange={setSearch} />
