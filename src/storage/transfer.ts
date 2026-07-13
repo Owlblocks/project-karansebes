@@ -1,11 +1,13 @@
 import { Zip, ZipPassThrough, strToU8, strFromU8, unzipSync } from 'fflate'
 import { db, type ImageRecord, type Character, type SourceWork } from '../db/database'
-import { getImageFile, saveImageToOPFS } from './opfs'
+import { getImageFile, saveImageToOPFS, generateThumbnail } from './opfs'
+
+type ManifestImage = Omit<ImageRecord, 'thumbnailDataUrl'>
 
 interface Manifest {
   version: 1
   exportedAt: string
-  images: ImageRecord[]
+  images: ManifestImage[]
   characters: Character[]
   sourceWorks: SourceWork[]
 }
@@ -25,7 +27,7 @@ export async function exportAll(onProgress?: (msg: string) => void): Promise<voi
   const manifest: Manifest = {
     version: 1,
     exportedAt: new Date().toISOString(),
-    images,
+    images: images.map(({ thumbnailDataUrl: _, ...rest }) => rest),
     characters,
     sourceWorks,
   }
@@ -199,12 +201,17 @@ export async function importFromZip(
     const imgBytes = entries[`images/${img.contentHash}`]
     if (!imgBytes) { imagesSkipped++; continue }
 
+    const buffer = imgBytes.buffer as ArrayBuffer
     const ext = img.opfsPath.split('.').pop() ?? 'bin'
-    const opfsPath = await saveImageToOPFS(imgBytes.buffer as ArrayBuffer, ext)
+    const [opfsPath, thumbnailDataUrl] = await Promise.all([
+      saveImageToOPFS(buffer, ext),
+      generateThumbnail(buffer, img.mimeType),
+    ])
 
     await db.images.add({
       ...img,
       opfsPath,
+      thumbnailDataUrl,
       characterIds: img.characterIds.map(id => charIdMap.get(id) ?? id),
       sourceWorkIds: img.sourceWorkIds.map(id => swIdMap.get(id) ?? id),
     })
