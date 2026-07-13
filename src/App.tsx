@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from './db/database'
 import { ImageCard } from './components/ImageCard'
 import { ImportButton } from './components/ImportButton'
+import { ExportButton } from './components/ExportButton'
 import { SearchBar } from './components/SearchBar'
 import { LibraryModal } from './components/LibraryModal'
 
@@ -73,6 +74,7 @@ export function App() {
           <span className="sm:hidden">📚</span>
           <span className="hidden sm:inline">Library</span>
         </button>
+        <ExportButton />
         <ImportButton />
       </header>
       {libraryOpen && <LibraryModal onClose={() => setLibraryOpen(false)} />}
