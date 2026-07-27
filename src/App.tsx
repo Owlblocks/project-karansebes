@@ -6,11 +6,12 @@ import { ImportButton } from './components/ImportButton'
 import { ExportButton } from './components/ExportButton'
 import { SearchBar } from './components/SearchBar'
 import { LibraryModal } from './components/LibraryModal'
-import { StorageIndicator } from './components/StorageIndicator'
+import { SettingsModal } from './components/SettingsModal'
 
 export function App() {
   const [search, setSearch] = useState('')
   const [libraryOpen, setLibraryOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [uncheckedOnly, setUncheckedOnly] = useState(false)
 
   const allImages = useLiveQuery(() => db.images.orderBy('createdAt').toArray(), [])
@@ -60,7 +61,6 @@ export function App() {
     <div className="min-h-screen bg-slate-950 text-white flex flex-col">
       <header className="sticky top-0 z-40 bg-slate-900/90 backdrop-blur border-b border-slate-800 px-4 py-3 flex gap-3 items-center">
         <h1 className="text-base font-semibold text-indigo-400 shrink-0 hidden sm:block">Project Karansebes</h1>
-        <StorageIndicator />
         <SearchBar value={search} onChange={setSearch} />
         <button
           onClick={() => setUncheckedOnly(v => !v)}
@@ -78,8 +78,16 @@ export function App() {
         </button>
         <ExportButton />
         <ImportButton />
+        <button
+          onClick={() => setSettingsOpen(true)}
+          className="px-2 sm:px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white rounded-lg text-sm font-medium transition-colors shrink-0"
+        >
+          <span className="sm:hidden">⚙️</span>
+          <span className="hidden sm:inline">Settings</span>
+        </button>
       </header>
       {libraryOpen && <LibraryModal onClose={() => setLibraryOpen(false)} />}
+      {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
 
       <main className="flex-1 min-w-0 p-4">
         {loading ? (
