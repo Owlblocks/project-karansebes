@@ -42,7 +42,15 @@ export async function generateThumbnail(buffer: ArrayBuffer, mimeType: string, m
     const objectUrl = URL.createObjectURL(blob)
     const img = new Image()
 
+    // Some browsers fire neither onload nor onerror under memory pressure —
+    // without a timeout a stuck decode hangs the whole import batch forever.
+    const timeout = setTimeout(() => {
+      URL.revokeObjectURL(objectUrl)
+      reject(new Error('Timed out loading image for thumbnail'))
+    }, 15_000)
+
     img.onload = () => {
+      clearTimeout(timeout)
       const scale = Math.min(maxSize / img.width, maxSize / img.height, 1)
       const canvas = document.createElement('canvas')
       canvas.width = Math.round(img.width * scale)
@@ -54,6 +62,7 @@ export async function generateThumbnail(buffer: ArrayBuffer, mimeType: string, m
     }
 
     img.onerror = () => {
+      clearTimeout(timeout)
       URL.revokeObjectURL(objectUrl)
       reject(new Error('Failed to load image for thumbnail'))
     }

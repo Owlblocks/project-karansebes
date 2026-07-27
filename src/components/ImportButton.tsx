@@ -30,6 +30,7 @@ export function ImportButton() {
         const result = await importFromZip(zip, setProgress)
         const parts = [`${result.imagesAdded} image${result.imagesAdded !== 1 ? 's' : ''} added`]
         if (result.imagesSkipped > 0) parts.push(`${result.imagesSkipped} skipped`)
+        if (result.imagesFailed > 0) parts.push(`${result.imagesFailed} failed`)
         if (result.charactersAdded > 0) parts.push(`${result.charactersAdded} new character${result.charactersAdded !== 1 ? 's' : ''}`)
         if (result.sourceWorksAdded > 0) parts.push(`${result.sourceWorksAdded} new source work${result.sourceWorksAdded !== 1 ? 's' : ''}`)
         alert(parts.join(', ') + '.')
@@ -41,6 +42,7 @@ export function ImportButton() {
 
     if (imageFiles.length > 0) {
       let skipped = 0
+      let failed = 0
       for (let i = 0; i < imageFiles.length; i++) {
         const file = imageFiles[i]
         setProgress(`Importing ${i + 1} / ${imageFiles.length}`)
@@ -70,9 +72,13 @@ export function ImportButton() {
           })
         } catch (err) {
           console.error(`Failed to import ${file.name}:`, err)
+          failed++
         }
       }
-      if (skipped > 0) alert(`${skipped} duplicate${skipped > 1 ? 's' : ''} skipped.`)
+      const parts: string[] = []
+      if (skipped > 0) parts.push(`${skipped} duplicate${skipped > 1 ? 's' : ''} skipped`)
+      if (failed > 0) parts.push(`${failed} failed`)
+      if (parts.length > 0) alert(parts.join(', ') + '.')
     }
 
     setImporting(false)
