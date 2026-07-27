@@ -92,7 +92,7 @@ export function ImportButton() {
       <input
         ref={inputRef}
         type="file"
-        accept="image/*,.zip,application/zip"
+        accept="image/*,.zip,application/zip,application/x-zip-compressed,application/octet-stream"
         multiple
         className="hidden"
         onChange={e => e.target.files && handleFiles(e.target.files)}
