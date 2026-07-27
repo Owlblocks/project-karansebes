@@ -109,6 +109,7 @@ async function streamZip(
 export interface ImportResult {
   imagesAdded: number
   imagesSkipped: number
+  imagesFailed: number
   charactersAdded: number
   sourceWorksAdded: number
 }
@@ -190,33 +191,40 @@ export async function importFromZip(
   // --- Phase 3: import images ---
   let imagesAdded = 0
   let imagesSkipped = 0
+  let imagesFailed = 0
 
   for (let i = 0; i < manifest.images.length; i++) {
     const img = manifest.images[i]
     onProgress?.(`Importing image ${i + 1} / ${manifest.images.length}…`)
 
-    const existing = await db.images.get(img.contentHash)
-    if (existing) { imagesSkipped++; continue }
+    try {
+      const existing = await db.images.get(img.contentHash)
+      if (existing) { imagesSkipped++; continue }
 
-    const imgBytes = entries[`images/${img.contentHash}`]
-    if (!imgBytes) { imagesSkipped++; continue }
+      const imgBytes = entries[`images/${img.contentHash}`]
+      if (!imgBytes) { imagesSkipped++; continue }
 
-    const buffer = imgBytes.buffer as ArrayBuffer
-    const ext = img.opfsPath.split('.').pop() ?? 'bin'
-    const [opfsPath, thumbnailDataUrl] = await Promise.all([
-      saveImageToOPFS(buffer, ext),
-      generateThumbnail(buffer, img.mimeType),
-    ])
+      const buffer = imgBytes.buffer as ArrayBuffer
+      const ext = img.opfsPath.split('.').pop() ?? 'bin'
+      const [opfsPath, thumbnailDataUrl] = await Promise.all([
+        saveImageToOPFS(buffer, ext),
+        generateThumbnail(buffer, img.mimeType),
+      ])
 
-    await db.images.add({
-      ...img,
-      opfsPath,
-      thumbnailDataUrl,
-      characterIds: img.characterIds.map(id => charIdMap.get(id) ?? id),
-      sourceWorkIds: img.sourceWorkIds.map(id => swIdMap.get(id) ?? id),
-    })
-    imagesAdded++
+      await db.images.add({
+        ...img,
+        opfsPath,
+        thumbnailDataUrl,
+        createdAt: new Date(img.createdAt),
+        characterIds: img.characterIds.map(id => charIdMap.get(id) ?? id),
+        sourceWorkIds: img.sourceWorkIds.map(id => swIdMap.get(id) ?? id),
+      })
+      imagesAdded++
+    } catch (err) {
+      console.error(`Failed to import image ${img.contentHash}:`, err)
+      imagesFailed++
+    }
   }
 
-  return { imagesAdded, imagesSkipped, charactersAdded, sourceWorksAdded }
+  return { imagesAdded, imagesSkipped, imagesFailed, charactersAdded, sourceWorksAdded }
 }
