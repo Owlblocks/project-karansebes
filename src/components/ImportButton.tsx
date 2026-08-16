@@ -1,7 +1,9 @@
 import { useRef, useState } from 'react'
 import { db } from '../db/database'
-import { saveImageToOPFS, generateThumbnail, hashBuffer } from '../storage/opfs'
+import { generateThumbnail, hashBuffer } from '../storage/opfs'
+import { saveImage } from '../storage/images'
 import { importFromZip } from '../storage/transfer'
+import { withSyncSuppressed, syncManifestNow } from '../storage/manifestSync'
 
 const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
 const EXT_MAP: Record<string, string> = {
@@ -43,38 +45,41 @@ export function ImportButton() {
     if (imageFiles.length > 0) {
       let skipped = 0
       let failed = 0
-      for (let i = 0; i < imageFiles.length; i++) {
-        const file = imageFiles[i]
-        setProgress(`Importing ${i + 1} / ${imageFiles.length}`)
-        try {
-          const buffer = await file.arrayBuffer()
-          const contentHash = await hashBuffer(buffer)
+      await withSyncSuppressed(async () => {
+        for (let i = 0; i < imageFiles.length; i++) {
+          const file = imageFiles[i]
+          setProgress(`Importing ${i + 1} / ${imageFiles.length}`)
+          try {
+            const buffer = await file.arrayBuffer()
+            const contentHash = await hashBuffer(buffer)
 
-          const existing = await db.images.get(contentHash)
-          if (existing) { skipped++; continue }
+            const existing = await db.images.get(contentHash)
+            if (existing) { skipped++; continue }
 
-          const ext = EXT_MAP[file.type] ?? 'bin'
-          const [opfsPath, thumbnailDataUrl] = await Promise.all([
-            saveImageToOPFS(buffer, ext),
-            generateThumbnail(buffer, file.type),
-          ])
+            const ext = EXT_MAP[file.type] ?? 'bin'
+            const [opfsPath, thumbnailDataUrl] = await Promise.all([
+              saveImage({ buffer, ext, mimeType: file.type, contentHash }),
+              generateThumbnail(buffer, file.type),
+            ])
 
-          await db.images.add({
-            opfsPath,
-            thumbnailDataUrl,
-            mimeType: file.type,
-            createdAt: new Date(),
-            contentHash,
-            imageText: null,
-            characterIds: [],
-            sourceWorkIds: [],
-            situationTags: [],
-          })
-        } catch (err) {
-          console.error(`Failed to import ${file.name}:`, err)
-          failed++
+            await db.images.add({
+              opfsPath,
+              thumbnailDataUrl,
+              mimeType: file.type,
+              createdAt: new Date(),
+              contentHash,
+              imageText: null,
+              characterIds: [],
+              sourceWorkIds: [],
+              situationTags: [],
+            })
+          } catch (err) {
+            console.error(`Failed to import ${file.name}:`, err)
+            failed++
+          }
         }
-      }
+      })
+      syncManifestNow(db)
       const parts: string[] = []
       if (skipped > 0) parts.push(`${skipped} duplicate${skipped > 1 ? 's' : ''} skipped`)
       if (failed > 0) parts.push(`${failed} failed`)

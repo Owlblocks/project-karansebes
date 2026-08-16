@@ -1,16 +1,9 @@
 import { Zip, ZipPassThrough, strToU8, strFromU8, unzipSync } from 'fflate'
-import { db, type ImageRecord, type Character, type SourceWork } from '../db/database'
-import { getImageFile, saveImageToOPFS, generateThumbnail } from './opfs'
-
-type ManifestImage = Omit<ImageRecord, 'thumbnailDataUrl'>
-
-interface Manifest {
-  version: 1
-  exportedAt: string
-  images: ManifestImage[]
-  characters: Character[]
-  sourceWorks: SourceWork[]
-}
+import { db, type ImageRecord, type Character } from '../db/database'
+import { generateThumbnail } from './opfs'
+import { getImageFile, saveImage } from './images'
+import { buildManifest, type Manifest } from './manifest'
+import { withSyncSuppressed, syncManifestNow } from './manifestSync'
 
 // ---------------------------------------------------------------------------
 // Export
@@ -18,19 +11,8 @@ interface Manifest {
 
 export async function exportAll(onProgress?: (msg: string) => void): Promise<void> {
   onProgress?.('Reading database…')
-  const [images, characters, sourceWorks] = await Promise.all([
-    db.images.toArray(),
-    db.characters.toArray(),
-    db.sourceWorks.toArray(),
-  ])
-
-  const manifest: Manifest = {
-    version: 1,
-    exportedAt: new Date().toISOString(),
-    images: images.map(({ thumbnailDataUrl: _, ...rest }) => rest),
-    characters,
-    sourceWorks,
-  }
+  const manifest = await buildManifest(db)
+  const images = await db.images.toArray()
 
   const filename = `karansebes-${new Date().toISOString().slice(0, 10)}.zip`
 
@@ -127,6 +109,16 @@ export async function importFromZip(
   const manifest: Manifest = JSON.parse(strFromU8(manifestBytes))
   if (manifest.version !== 1) throw new Error(`Unknown manifest version: ${manifest.version}`)
 
+  const result = await withSyncSuppressed(() => runImport(manifest, entries, onProgress))
+  syncManifestNow(db)
+  return result
+}
+
+async function runImport(
+  manifest: Manifest,
+  entries: Record<string, Uint8Array>,
+  onProgress?: (msg: string) => void,
+): Promise<ImportResult> {
   // --- Phase 1: merge SourceWorks ---
   onProgress?.('Merging source works…')
   const localSourceWorks = await db.sourceWorks.toArray()
@@ -207,7 +199,7 @@ export async function importFromZip(
       const buffer = imgBytes.buffer as ArrayBuffer
       const ext = img.opfsPath.split('.').pop() ?? 'bin'
       const [opfsPath, thumbnailDataUrl] = await Promise.all([
-        saveImageToOPFS(buffer, ext),
+        saveImage({ buffer, ext, mimeType: img.mimeType, contentHash: img.contentHash }),
         generateThumbnail(buffer, img.mimeType),
       ])
 

@@ -1,8 +1,9 @@
 import Dexie, { type Table } from 'dexie'
+import { scheduleManifestSync } from '../storage/manifestSync'
 
 export interface ImageRecord {
   contentHash: string
-  opfsPath: string
+  opfsPath: string // storage key for the active backend: OPFS filename (local) or S3 object key (s3)
   thumbnailDataUrl: string
   mimeType: string
   createdAt: Date
@@ -24,7 +25,7 @@ export interface SourceWork {
   name: string
 }
 
-class KaransebesDB extends Dexie {
+export class KaransebesDB extends Dexie {
   images!: Table<ImageRecord>
   characters!: Table<Character>
   sourceWorks!: Table<SourceWork>
@@ -39,6 +40,33 @@ class KaransebesDB extends Dexie {
     this.version(2).stores({}).upgrade(tx =>
       tx.table('images').toCollection().modify(img => { delete img.filename })
     )
+
+    const TEXT_FIELDS = new Set(['notes', 'imageText'])
+
+    this.images.hook('creating', function () {
+      this.onsuccess = () => scheduleManifestSync(db, true)
+    })
+    this.images.hook('updating', function (modifications) {
+      const keys = Object.keys(modifications)
+      if (keys.length === 0 || keys.every(k => k === 'thumbnailDataUrl')) return
+      const textOnly = keys.every(k => TEXT_FIELDS.has(k))
+      this.onsuccess = () => scheduleManifestSync(db, !textOnly)
+    })
+    this.images.hook('deleting', function () {
+      this.onsuccess = () => scheduleManifestSync(db, true)
+    })
+
+    for (const table of [this.characters, this.sourceWorks]) {
+      table.hook('creating', function () {
+        this.onsuccess = () => scheduleManifestSync(db, true)
+      })
+      table.hook('updating', function () {
+        this.onsuccess = () => scheduleManifestSync(db, true)
+      })
+      table.hook('deleting', function () {
+        this.onsuccess = () => scheduleManifestSync(db, true)
+      })
+    }
   }
 }
 

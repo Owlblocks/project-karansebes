@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { db, type ImageRecord, type Character, type SourceWork } from '../db/database'
-import { deleteImageFromOPFS, getImageFile } from '../storage/opfs'
+import { deleteImage, getImageFile } from '../storage/images'
 import { TagEditor } from './TagEditor'
 import { ImageViewer } from './ImageViewer'
 
@@ -23,7 +23,7 @@ export function ImageCard({ image, characters, sourceWorks }: Props) {
 
   async function handleDelete() {
     if (!confirm('Delete this image?')) return
-    await deleteImageFromOPFS(image.opfsPath)
+    await deleteImage(image.opfsPath)
     await db.images.delete(image.contentHash)
   }
 
@@ -85,11 +85,17 @@ export function ImageCard({ image, characters, sourceWorks }: Props) {
           onTouchEnd={isTouchDevice ? handleTouchEnd : undefined}
           className="block w-full aspect-square overflow-hidden bg-slate-900"
         >
-          <img
-            src={image.thumbnailDataUrl}
-            alt=""
-            className="w-full h-full object-contain transition-transform group-hover:scale-105"
-          />
+          {image.thumbnailDataUrl ? (
+            <img
+              src={image.thumbnailDataUrl}
+              alt=""
+              className="w-full h-full object-contain transition-transform group-hover:scale-105"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-slate-600 text-xs">
+              no preview
+            </div>
+          )}
         </button>
 
         {image.imageText === null && (

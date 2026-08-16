@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from './db/database'
 import { ImageCard } from './components/ImageCard'
@@ -7,12 +7,20 @@ import { ExportButton } from './components/ExportButton'
 import { SearchBar } from './components/SearchBar'
 import { LibraryModal } from './components/LibraryModal'
 import { SettingsModal } from './components/SettingsModal'
+import { getStorageMode } from './storage/settings'
+import { maybeRestoreFromS3 } from './storage/autoRestore'
 
 export function App() {
   const [search, setSearch] = useState('')
   const [libraryOpen, setLibraryOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [uncheckedOnly, setUncheckedOnly] = useState(false)
+  const [restoring, setRestoring] = useState(() => getStorageMode() === 's3')
+
+  useEffect(() => {
+    if (!restoring) return
+    maybeRestoreFromS3().finally(() => setRestoring(false))
+  }, [])
 
   const allImages = useLiveQuery(() => db.images.orderBy('createdAt').toArray(), [])
   const allCharacters = useLiveQuery(() => db.characters.toArray(), [])
@@ -55,7 +63,7 @@ export function App() {
     })
   }, [allImages, allCharacters, allSourceWorks, search, uncheckedOnly])
 
-  const loading = allImages === undefined || allCharacters === undefined || allSourceWorks === undefined
+  const loading = restoring || allImages === undefined || allCharacters === undefined || allSourceWorks === undefined
 
   return (
     <div className="min-h-screen bg-slate-950 text-white flex flex-col">
