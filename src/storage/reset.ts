@@ -1,5 +1,5 @@
 import { db } from '../db/database'
-import { withSyncSuppressed } from './manifestSync'
+import { withSyncSuppressed, syncManifestNow } from './manifestSync'
 
 export async function clearLocalData(): Promise<void> {
   await withSyncSuppressed(async () => {
@@ -7,6 +7,7 @@ export async function clearLocalData(): Promise<void> {
       await Promise.all([db.images.clear(), db.characters.clear(), db.sourceWorks.clear()])
     })
   })
+  syncManifestNow(db)
 
   const root = await navigator.storage.getDirectory()
   await root.removeEntry('images', { recursive: true }).catch(() => {})
