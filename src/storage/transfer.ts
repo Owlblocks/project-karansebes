@@ -1,6 +1,6 @@
 import { Zip, ZipPassThrough, strToU8, strFromU8, unzipSync } from 'fflate'
 import { db, type ImageRecord, type Character } from '../db/database'
-import { generateThumbnail } from './opfs'
+import { generateThumbnail, hashBuffer } from './opfs'
 import { getImageFile, saveImage } from './images'
 import { buildManifest, type Manifest } from './manifest'
 import { withSyncSuppressed, syncManifestNow } from './manifestSync'
@@ -109,9 +109,12 @@ export async function importFromZip(
   const manifest: Manifest = JSON.parse(strFromU8(manifestBytes))
   if (manifest.version !== 1) throw new Error(`Unknown manifest version: ${manifest.version}`)
 
-  const result = await withSyncSuppressed(() => runImport(manifest, entries, onProgress))
-  syncManifestNow(db)
-  return result
+  try {
+    return await withSyncSuppressed(() => runImport(manifest, entries, onProgress))
+  } finally {
+    // Even if the import failed partway, whatever it did write should reach the bucket.
+    syncManifestNow(db)
+  }
 }
 
 async function runImport(
@@ -219,4 +222,70 @@ async function runImport(
   }
 
   return { imagesAdded, imagesSkipped, imagesFailed, charactersAdded, sourceWorksAdded }
+}
+
+// ---------------------------------------------------------------------------
+// Import loose image files
+// ---------------------------------------------------------------------------
+
+export const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+
+const EXT_MAP: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/gif': 'gif',
+  'image/webp': 'webp',
+}
+
+export interface ImageFilesResult {
+  added: number
+  skipped: number
+  failed: number
+}
+
+export async function importImageFiles(
+  files: File[],
+  onProgress?: (msg: string) => void,
+): Promise<ImageFilesResult> {
+  try {
+    return await withSyncSuppressed(async () => {
+      const result: ImageFilesResult = { added: 0, skipped: 0, failed: 0 }
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i]
+        onProgress?.(`Importing ${i + 1} / ${files.length}`)
+        try {
+          const buffer = await file.arrayBuffer()
+          const contentHash = await hashBuffer(buffer)
+
+          const existing = await db.images.get(contentHash)
+          if (existing) { result.skipped++; continue }
+
+          const ext = EXT_MAP[file.type] ?? 'bin'
+          const [opfsPath, thumbnailDataUrl] = await Promise.all([
+            saveImage({ buffer, ext, mimeType: file.type, contentHash }),
+            generateThumbnail(buffer, file.type),
+          ])
+
+          await db.images.add({
+            opfsPath,
+            thumbnailDataUrl,
+            mimeType: file.type,
+            createdAt: new Date(),
+            contentHash,
+            imageText: null,
+            characterIds: [],
+            sourceWorkIds: [],
+            situationTags: [],
+          })
+          result.added++
+        } catch (err) {
+          console.error(`Failed to import ${file.name}:`, err)
+          result.failed++
+        }
+      }
+      return result
+    })
+  } finally {
+    syncManifestNow(db)
+  }
 }

@@ -3,7 +3,6 @@ import type { Manifest } from '../storage/manifest'
 
 // Drop-in replacement for src/storage/s3.ts, used via:
 //   vi.mock('./s3', () => import('../test/fakeS3'))
-// Only the manifest functions are faked; the image functions throw if reached.
 
 interface Pending {
   resolve(): void
@@ -22,6 +21,8 @@ export const bucket = {
   pending: [] as Pending[],
   /** When set, fetching the manifest throws this error. */
   getError: null as Error | null,
+  /** Image objects by key. */
+  objects: new Map<string, { bytes: Uint8Array; contentType: string }>(),
 
   get manifest(): Manifest | null {
     return this.manifestJson ? JSON.parse(this.manifestJson) : null
@@ -35,6 +36,7 @@ export const bucket = {
     this.holdPuts = false
     this.pending = []
     this.getError = null
+    this.objects = new Map()
   },
 }
 
@@ -58,13 +60,22 @@ export const getManifestFromS3 = vi.fn(async (): Promise<any> => {
   return bucket.manifest
 })
 
-function notFaked(name: string) {
-  return vi.fn(async (..._args: unknown[]): Promise<any> => {
-    throw new Error(`fakeS3: ${name} is not faked`)
-  })
-}
+export const saveImageToS3 = vi.fn(
+  async (buffer: ArrayBuffer, contentHash: string, ext: string, mimeType: string): Promise<string> => {
+    const key = `images/${contentHash}.${ext}`
+    bucket.objects.set(key, { bytes: new Uint8Array(buffer.slice(0)), contentType: mimeType })
+    return key
+  },
+)
 
-export const saveImageToS3 = notFaked('saveImageToS3')
-export const getImageFileFromS3 = notFaked('getImageFileFromS3')
-export const deleteImageFromS3 = notFaked('deleteImageFromS3')
-export const testS3Connection = notFaked('testS3Connection')
+export const getImageFileFromS3 = vi.fn(async (key: string): Promise<File> => {
+  const obj = bucket.objects.get(key)
+  if (!obj) throw Object.assign(new Error(`NoSuchKey: ${key}`), { name: 'NoSuchKey' })
+  return new File([obj.bytes as Uint8Array<ArrayBuffer>], key.split('/').pop()!, { type: obj.contentType })
+})
+
+export const deleteImageFromS3 = vi.fn(async (key: string): Promise<void> => {
+  bucket.objects.delete(key)
+})
+
+export const testS3Connection = vi.fn(async () => ({ ok: true as const }))

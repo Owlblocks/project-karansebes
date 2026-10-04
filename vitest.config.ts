@@ -3,8 +3,8 @@ import { defineConfig } from 'vitest/config'
 // Kept separate from vite.config.ts so tests don't load the PWA/Tailwind plugins.
 export default defineConfig({
   test: {
-    environment: 'jsdom',
-    setupFiles: ['./src/test/setup.ts'],
+    environment: 'node',
+    setupFiles: ['./vitest.setup.ts'],
     clearMocks: true,
     restoreMocks: true,
   },

@@ -9,6 +9,7 @@ import { LibraryModal } from './components/LibraryModal'
 import { SettingsModal } from './components/SettingsModal'
 import { getStorageMode } from './storage/settings'
 import { maybeRestoreFromS3 } from './storage/autoRestore'
+import { backfillThumbnails } from './storage/thumbnails'
 
 export function App() {
   const [search, setSearch] = useState('')
@@ -19,7 +20,12 @@ export function App() {
 
   useEffect(() => {
     if (!restoring) return
-    maybeRestoreFromS3().finally(() => setRestoring(false))
+    maybeRestoreFromS3()
+      .catch(err => console.error('Restore from S3 failed:', err))
+      .finally(() => {
+        setRestoring(false)
+        void backfillThumbnails()
+      })
   }, [])
 
   const allImages = useLiveQuery(() => db.images.orderBy('createdAt').toArray(), [])

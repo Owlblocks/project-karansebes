@@ -27,7 +27,7 @@ async function seedAndUpload() {
 }
 
 beforeEach(async () => {
-  // jsdom has no OPFS.
+  // Node has no OPFS.
   Object.defineProperty(navigator, 'storage', {
     configurable: true,
     value: { getDirectory: async () => ({ removeEntry }) },
