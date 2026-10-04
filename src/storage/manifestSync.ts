@@ -44,6 +44,18 @@ export function syncManifestNow(db: KaransebesDB): void {
   scheduleManifestSync(db, true)
 }
 
+/**
+ * Drops any debounced or queued sync, so it can't later upload a manifest built
+ * from wiped tables. An upload already in flight still completes.
+ */
+export function cancelPendingSync(): void {
+  if (debounceTimer) {
+    clearTimeout(debounceTimer)
+    debounceTimer = null
+  }
+  flushAgain = false
+}
+
 // Single-flights the upload: if a flush is already in progress when another is
 // requested, it doesn't start a second overlapping PUT (which could race the
 // first and land on S3 out of order) — it just re-runs once the current one

@@ -287,7 +287,9 @@ export function SettingsModal({ onClose }: Props) {
           <section className="flex flex-col gap-2 border border-red-900/50 rounded-lg p-3">
             <h3 className="text-sm font-semibold text-red-400">Danger Zone</h3>
             <p className="text-xs text-slate-400">
-              This permanently deletes all images, characters, and source works from this device. This cannot be undone.
+              {settings.storageMode === 's3'
+                ? 'This permanently deletes all images, characters, and source works from this device, and empties the catalog in your S3 bucket so they won\'t be restored. Image files already in the bucket are left in place but will no longer appear in the app. This cannot be undone.'
+                : 'This permanently deletes all images, characters, and source works from this device. This cannot be undone.'}
             </p>
             <label className="text-xs text-slate-400">
               Type <span className="font-mono text-slate-200">{CONFIRM_WORD}</span> to confirm.
