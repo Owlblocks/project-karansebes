@@ -46,8 +46,13 @@ export class KaransebesDB extends Dexie {
     this.images.hook('creating', function () {
       this.onsuccess = () => scheduleManifestSync(db, true)
     })
-    this.images.hook('updating', function (modifications) {
-      const keys = Object.keys(modifications)
+    // Dexie diffs arrays and Dates by reference against a deep clone, so every
+    // array field shows up in `modifications` even when unchanged — filter down
+    // to the fields whose values actually differ from the stored record.
+    this.images.hook('updating', function (modifications, _key, obj) {
+      const keys = Object.entries(modifications)
+        .filter(([k, v]) => JSON.stringify(v) !== JSON.stringify((obj as unknown as Record<string, unknown>)[k]))
+        .map(([k]) => k)
       if (keys.length === 0 || keys.every(k => k === 'thumbnailDataUrl')) return
       const textOnly = keys.every(k => TEXT_FIELDS.has(k))
       this.onsuccess = () => scheduleManifestSync(db, !textOnly)
