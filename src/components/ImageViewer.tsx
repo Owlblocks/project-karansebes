@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { type ImageRecord } from '../db/database'
-import { getImageFile } from '../storage/opfs'
+import { getImageFile } from '../storage/images'
 
 interface Props {
   image: ImageRecord

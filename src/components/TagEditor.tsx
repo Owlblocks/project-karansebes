@@ -102,11 +102,17 @@ export function TagEditor({ image, onClose }: Props) {
       onClick={e => e.target === e.currentTarget && onClose()}
     >
       <div className="bg-slate-800 rounded-xl p-6 w-full max-w-lg flex flex-col gap-5 max-h-[90vh] overflow-y-auto">
-        <img
-          src={image.thumbnailDataUrl}
-          alt=""
-          className="w-full max-h-40 object-contain rounded-lg bg-slate-900 shrink-0"
-        />
+        {image.thumbnailDataUrl ? (
+          <img
+            src={image.thumbnailDataUrl}
+            alt=""
+            className="w-full max-h-40 object-contain rounded-lg bg-slate-900 shrink-0"
+          />
+        ) : (
+          <div className="w-full h-40 flex items-center justify-center rounded-lg bg-slate-900 text-slate-600 text-xs shrink-0">
+            no preview
+          </div>
+        )}
 
         {/* Image text */}
         <section className="flex flex-col gap-2">

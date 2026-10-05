@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from './db/database'
 import { ImageCard } from './components/ImageCard'
@@ -7,12 +7,38 @@ import { ExportButton } from './components/ExportButton'
 import { SearchBar } from './components/SearchBar'
 import { LibraryModal } from './components/LibraryModal'
 import { SettingsModal } from './components/SettingsModal'
+import { getStorageMode } from './storage/settings'
+import { maybeRestoreFromS3 } from './storage/autoRestore'
+import { backfillThumbnails } from './storage/thumbnails'
 
 export function App() {
   const [search, setSearch] = useState('')
   const [libraryOpen, setLibraryOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [uncheckedOnly, setUncheckedOnly] = useState(false)
+  const [restoring, setRestoring] = useState(() => getStorageMode() === 's3')
+  const [restoreError, setRestoreError] = useState<string | null>(null)
+
+  // Until the S3 restore check succeeds, the library stays hidden: an empty,
+  // editable library would let the next write overwrite the bucket's manifest.
+  function runRestore() {
+    setRestoring(true)
+    setRestoreError(null)
+    maybeRestoreFromS3()
+      .then(() => {
+        setRestoring(false)
+        void backfillThumbnails()
+      })
+      .catch(err => {
+        console.error('Restore from S3 failed:', err)
+        setRestoring(false)
+        setRestoreError(err?.message ?? String(err))
+      })
+  }
+
+  useEffect(() => {
+    if (restoring) runRestore()
+  }, [])
 
   const allImages = useLiveQuery(() => db.images.orderBy('createdAt').toArray(), [])
   const allCharacters = useLiveQuery(() => db.characters.toArray(), [])
@@ -55,7 +81,34 @@ export function App() {
     })
   }, [allImages, allCharacters, allSourceWorks, search, uncheckedOnly])
 
-  const loading = allImages === undefined || allCharacters === undefined || allSourceWorks === undefined
+  if (restoreError !== null) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center gap-4 p-4 text-center">
+        <h1 className="text-lg font-semibold text-red-400">Couldn't load your library from S3</h1>
+        <p className="text-sm text-slate-400 max-w-md">
+          Check your connection and S3 settings. The app stays locked until it can read the bucket, so that it doesn't overwrite your saved catalog.
+        </p>
+        <p className="text-xs font-mono text-slate-500 max-w-md break-words">{restoreError}</p>
+        <div className="flex gap-2">
+          <button
+            onClick={runRestore}
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium transition-colors"
+          >
+            Retry
+          </button>
+          <button
+            onClick={() => setSettingsOpen(true)}
+            className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white rounded-lg text-sm font-medium transition-colors"
+          >
+            Settings
+          </button>
+        </div>
+        {settingsOpen && <SettingsModal onClose={() => { setSettingsOpen(false); runRestore() }} />}
+      </div>
+    )
+  }
+
+  const loading = restoring || allImages === undefined || allCharacters === undefined || allSourceWorks === undefined
 
   return (
     <div className="min-h-screen bg-slate-950 text-white flex flex-col">
