@@ -70,10 +70,12 @@ describe('maybeRestoreFromS3', () => {
     expect(await db.images.count()).toBe(0)
   })
 
-  it('does nothing when fetching the manifest fails', async () => {
+  // Swallowing this would leave an empty, writable library whose next sync
+  // overwrites the bucket's manifest — the caller has to see the failure.
+  it('throws when fetching the manifest fails', async () => {
     bucket.getError = new Error('AccessDenied')
 
-    expect(await maybeRestoreFromS3()).toBe(false)
+    await expect(maybeRestoreFromS3()).rejects.toThrow('AccessDenied')
     expect(await db.images.count()).toBe(0)
   })
 })

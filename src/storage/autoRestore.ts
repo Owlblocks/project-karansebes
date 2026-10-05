@@ -8,6 +8,10 @@ import type { Manifest } from './manifest'
  * If S3 mode is active and local storage looks freshly wiped (all tables empty),
  * restores metadata from the bucket's manifest.json. Image bytes are never
  * bulk-downloaded — they're fetched on demand when a user opens one.
+ *
+ * Throws if the manifest can't be fetched (offline, bad credentials, CORS). The
+ * caller must not let the user write anything until this succeeds: the next
+ * write would upload a near-empty manifest over the bucket's real one.
  */
 export async function maybeRestoreFromS3(): Promise<boolean> {
   if (getStorageMode() !== 's3') return false
@@ -19,7 +23,7 @@ export async function maybeRestoreFromS3(): Promise<boolean> {
   ])
   if (imageCount > 0 || charCount > 0 || swCount > 0) return false
 
-  const manifest = await getManifestFromS3<Manifest>().catch(() => null)
+  const manifest = await getManifestFromS3<Manifest>()
   if (!manifest) return false
 
   await withSyncSuppressed(async () => {

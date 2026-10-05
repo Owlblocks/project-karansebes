@@ -79,6 +79,8 @@ export async function getManifestFromS3<T>(): Promise<T | null> {
     const res = await client.send(new GetObjectCommand({ Bucket: config.bucket, Key: MANIFEST_KEY }))
     return JSON.parse(await res.Body!.transformToString())
   } catch (err: any) {
+    // A missing manifest just means a new bucket; a missing bucket is a config error.
+    if (err?.name === 'NoSuchBucket') throw err
     if (err?.name === 'NoSuchKey' || err?.$metadata?.httpStatusCode === 404) return null
     throw err
   }
