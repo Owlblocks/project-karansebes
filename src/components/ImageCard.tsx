@@ -89,6 +89,7 @@ export function ImageCard({ image, characters, sourceWorks }: Props) {
             <img
               src={image.thumbnailDataUrl}
               alt=""
+              draggable={false}
               className="w-full h-full object-contain transition-transform group-hover:scale-105"
             />
           ) : (
