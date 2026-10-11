@@ -10,6 +10,7 @@ import { SettingsModal } from './components/SettingsModal'
 import { getStorageMode } from './storage/settings'
 import { maybeRestoreFromS3 } from './storage/autoRestore'
 import { backfillThumbnails } from './storage/thumbnails'
+import { buildSearchLookups, filterImages } from './search/filterImages'
 
 export function App() {
   const [search, setSearch] = useState('')
@@ -44,42 +45,16 @@ export function App() {
   const allCharacters = useLiveQuery(() => db.characters.toArray(), [])
   const allSourceWorks = useLiveQuery(() => db.sourceWorks.toArray(), [])
 
+  // rebuilt only when the entity tables change, not on every keystroke
+  const lookups = useMemo(
+    () => buildSearchLookups(allCharacters ?? [], allSourceWorks ?? []),
+    [allCharacters, allSourceWorks],
+  )
+
   const filtered = useMemo(() => {
     if (!allImages || !allCharacters || !allSourceWorks) return []
-    const query = search.trim().toLowerCase()
-
-
-    const sorted = [...allImages].reverse()
-    const base = uncheckedOnly ? sorted.filter(img => img.imageText === null) : sorted
-    if (!query) return base
-
-    return base.filter(img => {
-      if (img.situationTags.some(t => t.includes(query))) return true
-      if (img.imageText && img.imageText.toLowerCase().includes(query)) return true
-      if (img.notes && img.notes.toLowerCase().includes(query)) return true
-
-      const charNames = img.characterIds
-        .map(id => allCharacters.find(c => c.id === id)?.name.toLowerCase())
-        .filter(Boolean) as string[]
-      if (charNames.some(n => n.includes(query))) return true
-
-      const sourceNames = img.sourceWorkIds
-        .map(id => allSourceWorks.find(sw => sw.id === id)?.name.toLowerCase())
-        .filter(Boolean) as string[]
-      if (sourceNames.some(n => n.includes(query))) return true
-
-      // also match source works reachable via characters
-      const charSourceNames = img.characterIds.flatMap(cid => {
-        const char = allCharacters.find(c => c.id === cid)
-        return (char?.sourceWorkIds ?? [])
-          .map(sid => allSourceWorks.find(sw => sw.id === sid)?.name.toLowerCase())
-          .filter(Boolean) as string[]
-      })
-      if (charSourceNames.some(n => n.includes(query))) return true
-
-      return false
-    })
-  }, [allImages, allCharacters, allSourceWorks, search, uncheckedOnly])
+    return filterImages(allImages, lookups, search, uncheckedOnly)
+  }, [allImages, allCharacters, allSourceWorks, lookups, search, uncheckedOnly])
 
   if (restoreError !== null) {
     return (
