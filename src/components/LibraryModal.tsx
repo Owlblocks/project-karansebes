@@ -134,16 +134,24 @@ function SourceWorksPanel() {
     })
   }
 
+  // The add input doubles as a filter; the row being edited stays visible
+  const query = newName.trim().toLowerCase()
+  const visibleSourceWorks = (allSourceWorks ?? []).filter(sw =>
+    sw.id === editing?.id || sw.name.toLowerCase().includes(query)
+  )
+
   return (
     <div className="flex flex-col gap-3">
-      <AddItemInput value={newName} onChange={setNewName} onAdd={addSourceWork} placeholder="New source work…" />
+      <AddItemInput value={newName} onChange={setNewName} onAdd={addSourceWork} placeholder="Search or add source work…" />
 
-      {(allSourceWorks ?? []).length === 0 && (
-        <p className="text-sm text-slate-500 italic">No source works yet.</p>
+      {visibleSourceWorks.length === 0 && (
+        <p className="text-sm text-slate-500 italic">
+          {query ? 'No matching source works.' : 'No source works yet.'}
+        </p>
       )}
 
       <ul className="flex flex-col gap-1">
-        {(allSourceWorks ?? []).map(sw => (
+        {visibleSourceWorks.map(sw => (
           <li key={sw.id} className="bg-slate-600 rounded-lg px-3 py-2">
             {editing?.id === sw.id ? (
               <div className="flex gap-2">
@@ -232,13 +240,19 @@ function CharactersPanel() {
   )
   const showSourceDropdown = (editing?.sourceInput.trim().length ?? 0) > 0 && availableSources.length > 0
 
-  const visibleCharacters = noSourceOnly
-    ? (allCharacters ?? []).filter(c => c.sourceWorkIds.length === 0)
-    : (allCharacters ?? [])
+  // The add input doubles as a filter (name or source work); the row being edited stays visible
+  const query = newName.trim().toLowerCase()
+  const visibleCharacters = (allCharacters ?? []).filter(c =>
+    c.id === editing?.id || (
+      (!noSourceOnly || c.sourceWorkIds.length === 0) &&
+      (c.name.toLowerCase().includes(query) ||
+        c.sourceWorkIds.some(id => sourceWorkName(id).toLowerCase().includes(query)))
+    )
+  )
 
   return (
     <div className="flex flex-col gap-3">
-      <AddItemInput value={newName} onChange={setNewName} onAdd={addCharacter} placeholder="New character…" />
+      <AddItemInput value={newName} onChange={setNewName} onAdd={addCharacter} placeholder="Search or add character…" />
 
       <button
         onClick={() => setNoSourceOnly(v => !v)}
@@ -250,7 +264,7 @@ function CharactersPanel() {
 
       {visibleCharacters.length === 0 && (
         <p className="text-sm text-slate-500 italic">
-          {noSourceOnly ? 'All characters have a source work.' : 'No characters yet.'}
+          {query ? 'No matching characters.' : noSourceOnly ? 'All characters have a source work.' : 'No characters yet.'}
         </p>
       )}
 

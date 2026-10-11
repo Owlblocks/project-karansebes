@@ -30,10 +30,17 @@ export function TagEditor({ image, onClose }: Props) {
   }
 
   // Characters
-  const filteredChars = (allCharacters ?? []).filter(c =>
-    !characterIds.includes(c.id!) &&
-    c.name.toLowerCase().includes(charInput.toLowerCase())
-  )
+  // Match on the character's name or any of its source works; name matches first
+  const charQuery = charInput.trim().toLowerCase()
+  const sourceNameById = new Map((allSourceWorks ?? []).map(sw => [sw.id!, sw.name.toLowerCase()]))
+  const unselectedChars = (allCharacters ?? []).filter(c => !characterIds.includes(c.id!))
+  const filteredChars = [
+    ...unselectedChars.filter(c => c.name.toLowerCase().includes(charQuery)),
+    ...unselectedChars.filter(c =>
+      !c.name.toLowerCase().includes(charQuery) &&
+      c.sourceWorkIds.some(id => sourceNameById.get(id)?.includes(charQuery))
+    ),
+  ]
   const showCharCreate = charInput.trim().length > 0 &&
     !(allCharacters ?? []).some(c => c.name.toLowerCase() === charInput.trim().toLowerCase())
 
