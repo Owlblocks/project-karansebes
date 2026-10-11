@@ -111,7 +111,10 @@ export function App() {
   const loading = restoring || allImages === undefined || allCharacters === undefined || allSourceWorks === undefined
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white flex flex-col">
+    <div
+      className="min-h-screen bg-slate-950 text-white flex flex-col"
+      onDragStart={e => e.preventDefault()}
+    >
       <header className="sticky top-0 z-40 bg-slate-900/90 backdrop-blur border-b border-slate-800 px-4 py-3 flex gap-3 items-center">
         <h1 className="text-base font-semibold text-indigo-400 shrink-0 hidden sm:block">Project Karansebes</h1>
         <SearchBar value={search} onChange={setSearch} />
